@@ -1,0 +1,47 @@
+server:
+  servlet:
+    context-path: /
+  encoding:
+    enabled: true
+    charset: UTF-8
+    force: true
+  tomcat:
+    uri-encoding: UTF-8
+  jsp-servlet:
+    init-parameters:
+      development: true
+
+spring:
+  profiles:
+    active: '@profiles.active@'
+  mail:
+    protocol: smtp
+    host: smtp.163.com
+  thymeleaf:
+    enabled: false
+    cache: false
+  mvc:
+    view:
+      prefix: /views/
+      suffix: .jsp
+  devtools:
+    restart:
+      enabled: true
+
+# mybatis配置
+mybatis:
+  type-aliases-package: com.fit.entity
+  mapper-locations: classpath:mapper/**/*.xml
+
+# 是否远程备份数据库
+remoteDB: no
+DBSeverport: 6666
+# 数据库类型
+dbType: mysql
+dbPort: 3306
+dbUser: root
+dbPass: root
+dbAddr: 127.0.0.1
+dbName: test
+dbPath: /data/mysql
+sqlFilePath: /mnt/sql

@@ -19,10 +19,9 @@ import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.crypto.hash.SimpleHash;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.Subject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.fit.common.base.BaseController;
@@ -47,6 +46,9 @@ import com.fit.entity.PageData;
 @Controller
 public class LoginController extends BaseController {
 
+    @Value("${debug}")
+    private boolean isDebug = false;
+
     @Resource(name = "userService")
     private UserManager userService;
     @Resource(name = "menuService")
@@ -66,7 +68,7 @@ public class LoginController extends BaseController {
      * @return
      * @throws Exception
      */
-    @RequestMapping(value = "/login_toLogin")
+    @GetMapping(value = {"/", "/login"})
     public ModelAndView toLogin() throws Exception {
         ModelAndView mv = this.getModelAndView();
         PageData pd = this.getPageData();
@@ -79,9 +81,10 @@ public class LoginController extends BaseController {
     /**
      * 请求登录，验证用户
      */
-    @RequestMapping(value = "/login_login", produces = "application/json;charset=UTF-8")
+    @PostMapping(value = "/login", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public Object login() throws Exception {
+        boolean toVerify = false;
         Map<String, String> map = new HashMap<String, String>();
         PageData pd = null;
         pd = this.getPageData();
@@ -89,47 +92,54 @@ public class LoginController extends BaseController {
         String KEYDATA[] = pd.getString("KEYDATA").replaceAll("qq313596790fh", "").replaceAll("QQ978336446fh", "").split(",fh,");
         if (null != KEYDATA && KEYDATA.length == 3) {
             Session session = Jurisdiction.getSession();
-            String sessionCode = (String) session.getAttribute(Const.SESSION_SECURITY_CODE);        //获取session中的验证码
-            String code = KEYDATA[2];
-            if (null == code || "".equals(code)) {//判断效验码
-                errInfo = "nullcode";            //效验码为空
+            // 判断登录验证码
+            if (!isDebug) {
+                String code = KEYDATA[2];
+                if (null == code || "".equals(code)) {//判断效验码
+                    errInfo = "nullcode";    //效验码为空
+                }
+                String sessionCode = (String) session.getAttribute(Const.SESSION_SECURITY_CODE); // 获取session中的验证码
+                if (StringUtil.isNotEmpty(sessionCode) && !sessionCode.equalsIgnoreCase(code)) {
+                    errInfo = "验证码输入有误"; // 验证码输入有误
+                } else {
+                    toVerify = true;
+                }
             } else {
+                toVerify = true;
+            }
+            if (toVerify) {
                 String USERNAME = KEYDATA[0];    //登录过来的用户名
                 String PASSWORD = KEYDATA[1];    //登录过来的密码
                 pd.put("USERNAME", USERNAME);
-                if (StringUtil.isNotEmpty(sessionCode) && sessionCode.equalsIgnoreCase(code)) {        //判断登录验证码
-                    String passwd = new SimpleHash("SHA-1", USERNAME, PASSWORD).toString();    //密码加密
-                    pd.put("PASSWORD", passwd);
-                    pd = userService.getUserByNameAndPwd(pd);    //根据用户名和密码去读取用户信息
-                    if (pd != null) {
-                        pd.put("LAST_LOGIN", DateUtil.getTime().toString());
-                        userService.updateLastLogin(pd);
-                        User user = new User();
-                        user.setUSER_ID(pd.getString("USER_ID"));
-                        user.setUSERNAME(pd.getString("USERNAME"));
-                        user.setPASSWORD(pd.getString("PASSWORD"));
-                        user.setNAME(pd.getString("NAME"));
-                        user.setRIGHTS(pd.getString("RIGHTS"));
-                        user.setROLE_ID(pd.getString("ROLE_ID"));
-                        user.setLAST_LOGIN(pd.getString("LAST_LOGIN"));
-                        user.setIP(pd.getString("IP"));
-                        user.setSTATUS(pd.getString("STATUS"));
-                        session.setAttribute(Const.SESSION_USER, user);            //把用户信息放session中
-                        session.removeAttribute(Const.SESSION_SECURITY_CODE);    //清除登录验证码的session
-                        //shiro加入身份验证
-                        Subject subject = SecurityUtils.getSubject();
-                        UsernamePasswordToken token = new UsernamePasswordToken(USERNAME, PASSWORD);
-                        try {
-                            subject.login(token);
-                        } catch (AuthenticationException e) {
-                            errInfo = "身份验证失败！";
-                        }
-                    } else {
-                        errInfo = "usererror";                //用户名或密码有误
-                        logBefore(log, USERNAME + "登录系统密码或用户名错误");
+                String passwd = new SimpleHash("SHA-1", USERNAME, PASSWORD).toString();    //密码加密
+                pd.put("PASSWORD", passwd);
+                pd = userService.getUserByNameAndPwd(pd);    //根据用户名和密码去读取用户信息
+                if (pd != null) {
+                    pd.put("LAST_LOGIN", DateUtil.getTime().toString());
+                    userService.updateLastLogin(pd);
+                    User user = new User();
+                    user.setUSER_ID(pd.getString("USER_ID"));
+                    user.setUSERNAME(pd.getString("USERNAME"));
+                    user.setPASSWORD(pd.getString("PASSWORD"));
+                    user.setNAME(pd.getString("NAME"));
+                    user.setRIGHTS(pd.getString("RIGHTS"));
+                    user.setROLE_ID(pd.getString("ROLE_ID"));
+                    user.setLAST_LOGIN(pd.getString("LAST_LOGIN"));
+                    user.setIP(pd.getString("IP"));
+                    user.setSTATUS(pd.getString("STATUS"));
+                    session.setAttribute(Const.SESSION_USER, user);            //把用户信息放session中
+                    session.removeAttribute(Const.SESSION_SECURITY_CODE);    //清除登录验证码的session
+                    //shiro加入身份验证
+                    Subject subject = SecurityUtils.getSubject();
+                    UsernamePasswordToken token = new UsernamePasswordToken(USERNAME, PASSWORD);
+                    try {
+                        subject.login(token);
+                    } catch (AuthenticationException e) {
+                        errInfo = "身份验证失败！";
                     }
                 } else {
-                    errInfo = "codeerror";                    //验证码输入有误
+                    errInfo = "usererror";                //用户名或密码有误
+                    logBefore(log, USERNAME + "登录系统密码或用户名错误");
                 }
                 if (StringUtil.isEmpty(errInfo)) {
                     errInfo = "success";                    //验证成功

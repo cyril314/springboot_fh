@@ -133,7 +133,7 @@
 				var code = "qq313596790fh"+loginname+",fh,"+password+"QQ978336446fh"+",fh,"+$("#code").val();
 				$.ajax({
 					type: "POST",
-					url: 'login_login',
+					url: 'login',
 			    	data: {KEYDATA:code,tm:new Date().getTime()},
 					dataType:'json',
 					cache: false,

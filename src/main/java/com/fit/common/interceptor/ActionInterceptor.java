@@ -24,7 +24,6 @@ import java.io.File;
 public class ActionInterceptor implements HandlerInterceptor {
 
     //不对匹配该值的访问路径拦截（正则）
-    private static final String NO_INTERCEPTOR_PATH = ".*/((login*)|(logout)|(code)|(app)|(weixin)|(assets)|(main)|(websocket)).*";
     private static final String SUFFIX = ".do";
 
     /**
@@ -62,20 +61,6 @@ public class ActionInterceptor implements HandlerInterceptor {
         }
         String path = req.getServletPath();
         switch (resp.getStatus()) {
-            case 200:
-                if (!path.matches(NO_INTERCEPTOR_PATH)) {
-                    User user = (User) Jurisdiction.getSession().getAttribute(Const.SESSION_USER);
-                    if (user != null) {
-                        path = path.substring(1, path.length());
-                        boolean b = Jurisdiction.hasJurisdiction(path); //访问权限校验
-                        if (!b) {
-                            resp.sendRedirect(req.getContextPath() + Const.LOGIN);
-                        }
-                    } else {//登陆过滤
-                        resp.sendRedirect(req.getContextPath() + Const.LOGIN);
-                    }
-                }
-                break;
             case 403:
             case 500:
                 mav.setViewName("error");
